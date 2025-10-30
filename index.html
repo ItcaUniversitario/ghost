@@ -177,12 +177,19 @@
             type="pattern" 
             url="qrcode.patt" 
             marker-audio-handler="sfx: #sfxPlayer">
-        
-            <a-box position="0 0.5 0" scale="0.5 0.5 0.5" material="color: red"></a-box>
-        
-        
+
+            <a-gltf-model 
+                src="#terror-model"
+                position="0 0.5 0"
+                rotation="-90 0 0"
+                scale="0.5 0.5 0.5"
+                animation-mixer="clip: *; loop: repeat"
+                gesture-handler>
+            </a-gltf-model>
+
             <a-light type="ambient" color="#888"></a-light>
             <a-light type="directional" color="#FFF" intensity="0.8" position="-1 2 1"></a-light>
+
         </a-marker>
 
         <a-camera gps-camera rotation-reader></a-camera>
