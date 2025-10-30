@@ -1,34 +1,62 @@
 <!DOCTYPE html>
 <html>
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <head>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <script>
+      AFRAME.registerComponent('marker-handler', {
+        init: function () {
+          // Se activa cuando el marcador aparece
+          this.el.addEventListener('markerFound', () => {
+            console.log("¡Marcador Encontrado!");
+            let sound = this.el.querySelector('a-sound'); // Busca el sonido dentro de este marcador
+            if (sound) {
+              sound.components.sound.playSound(); // Reproduce el sonido
+            }
+          });
+
+          // Se activa cuando el marcador desaparece
+          this.el.addEventListener('markerLost', () => {
+            console.log("Marcador Perdido.");
+            let sound = this.el.querySelector('a-sound');
+            if (sound) {
+              sound.components.sound.stopSound(); // Detiene el sonido
+            }
+          });
+        }
+      });
+    </script>
+  </head>
 
   <body style="margin : 0px; overflow: hidden;">
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
 
       <a-assets>
-        <a-asset-item id="ghost-model" src="scary.glb"></a-asset-item>
-        
-        <audio id="scream-sound" src="audio.mp3" preload="auto"></audio>
-      </a-assets>
+        <a-asset-item id="ghost1-model" src="assets/scary.glb"></a-asset-item>
+        <audio id="sound1" src="assets/audio.mp3" preload="auto"></audio>
+        </a-assets>
 
-      <a-marker type="pattern" url="qrcode.patt">
+      <a-marker type="pattern" url="assets/qrcode.patt" marker-handler>
         
         <a-gltf-model 
-            src="#ghost-model"
+            src="#ghost1-model"
             scale="0.5 0.5 0.5"
-            position="0 0.5 0"
             animation-mixer>
         </a-gltf-model>
 
         <a-sound 
-            src="#scream-sound" 
-            autoplay="true" 
+            src="#sound1" 
             loop="false" 
             volume="2">
         </a-sound>
-
       </a-marker>
+
+      <a-marker type="pattern" url="assets/pattern-qr2.patt" marker-handler>
+        </a-marker>
+
+      <a-marker type="pattern" url="assets/pattern-qr3.patt" marker-handler>
+        </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
