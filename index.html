@@ -1,269 +1,254 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <title>Proyecto WebAR de Terror (AR.js + A-Frame)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebAR Terror - AR.js/A-Frame</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
     <script src="https://raw.githack.com/fcor/aframe-gesture-detector/master/dist/aframe-gesture-detector.min.js"></script>
 
     <style>
         body {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            overflow: hidden; /* Evita barras de scroll */
+            font-family: Arial, sans-serif;
         }
-
-        /* Contenedor principal de la UI, superpuesto a la escena */
+        /* Contenedor principal de la UI, fijado en la parte inferior */
         #ui-container {
             position: fixed;
-            top: 0;
+            bottom: 0;
             left: 0;
             width: 100%;
-            height: 100%;
-            z-index: 10;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.6);
+            box-sizing: border-box;
+            z-index: 100;
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
             justify-content: center;
-            align-items: center;
-            background-color: rgba(0, 0, 0, 0.5); /* Overlay semitransparente */
-            color: white;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box; /* Para que el padding no afecte el width/height */
+            gap: 10px;
         }
-
-        /* Oculta la UI una vez que se activa el audio */
-        #ui-container.hidden {
-            display: none;
-        }
-
-        #ui-container h2 {
-            margin-top: 0;
-        }
-        
-        #ui-container p {
-            font-size: 1.1em;
-            max-width: 400px;
-        }
-
-        /* Estilo del botón principal */
-        .ui-button {
-            background-color: #4CAF50; /* Verde */
-            color: white;
-            border: none;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 5px;
-            cursor: pointer;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-
-        .ui-button:hover {
-            background-color: #45a049;
-        }
-        
-        /* Botón secundario/de utilidad */
-        .util-button {
-            background-color: #008CBA; /* Azul */
-        }
-        
-        .util-button:hover {
-            background-color: #007ba7;
-        }
-        
-        /* Contenedor para botones de utilidad en la parte inferior */
-        #util-controls {
+        /* Contenedor de instrucciones, fijado en la parte superior */
+        #instructions-container {
             position: fixed;
-            bottom: 10px;
+            top: 0;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 11;
-            display: flex;
-            gap: 10px;
-            background-color: rgba(0, 0, 0, 0.3);
-            padding: 5px;
+            width: 90%;
+            max-width: 400px;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
             border-radius: 8px;
+            text-align: center;
+            z-index: 100;
+            font-size: 0.9em;
         }
-
-        /* Asegura que la escena ocupe todo */
-        a-scene {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
+        /* Estilo base para los botones */
+        .ui-button {
+            padding: 12px 18px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .ui-button:hover {
+            background-color: #2980b9;
+        }
+        /* El botón de 'Mute' (Silenciar) empieza oculto */
+        #mute-btn {
+            display: none;
+            background-color: #e67e22;
+        }
+        #mute-btn:hover {
+            background-color: #d35400;
         }
     </style>
-</head>
-
-<body>
-
-    <div id="ui-container">
-        <h2>Experiencia WebAR de Terror</h2>
-        <p>Apunta al marcador para ver el modelo 3D.</p>
-        <p><strong>Pulsa el botón para activar el sonido.</strong></p>
-        <button id="activate-sound-button" class="ui-button">Activar Sonido</button>
-    </div>
-    
-    <div id="util-controls">
-        <button id="copy-url-button" class="ui-button util-button">Copiar URL</button>
-        <button id="show-marker-button" class="ui-button util-button">Ver Marcador</button>
-    </div>
-
-
-    <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-        renderer="antialias: true; physicallyCorrectLights: true; webgl2: true"
-        gesture-detector
-        vr-mode-ui="enabled: false">
-
-        <a-assets>
-            <a-asset-item id="model-terror" src="scary.glb"></a-asset-item>
-
-            <audio id="sfx-terror" src="audio.mp3" preload="auto" crossOrigin="anonymous"></audio>
-        </a-assets>
-
-        <a-entity 
-            id="sfx-player" 
-            sound="src: #sfx-terror; autoplay: false; loop: false; volume: 1.0; positional: false">
-        </a-entity>
-
-        <a-marker 
-            type="pattern" 
-            patternUrl="./qrcode.patt" 
-            id="marker-custom"
-            marker-audio-handler>
-
-            <a-gltf-model
-                src="#model-terror"
-                scale="0.1 0.1 0.1"
-                position="0 0 0"
-                rotation="0 0 0"
-                animation-mixer="clip: *; loop: repeat">
-            </a-gltf-model>
-
-            <a-entity light="type: ambient; color: #555; intensity: 0.8"></a-entity>
-            <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="-1 1 1"></a-entity>
-
-        </a-marker>
-
-        <a-entity camera></a-entity>
-        
-    </a-scene>
 
     <script>
-        
-        /**
-         * Componente A-Frame: 'marker-audio-handler'
-         * * Propósito: Escuchar eventos 'markerFound' y 'markerLost' para
-         * reproducir un sonido UNA SOLA VEZ por detección y pausarlo
-         * cuando el marcador se pierde.
-         */
         AFRAME.registerComponent('marker-audio-handler', {
-            
-            init: function () {
-                // Referencia a la entidad que reproduce el sonido
-                this.soundEl = document.querySelector('#sfx-player');
-                
-                // Bandera (flag) para controlar la reproducción única
-                this.hasPlayed = false;
+            // Esquema para recibir el selector de la entidad de sonido
+            schema: {
+                sfx: { type: 'selector' }
+            },
 
-                // Bindear (atar) 'this' a las funciones de evento
+            init: function () {
+                // Flag para asegurar que el sonido solo suene una vez por ciclo de detección
+                this.hasPlayedThisSession = false;
+                this.soundEntity = this.data.sfx;
+
+                // Bind de los eventos
                 this.onMarkerFound = this.onMarkerFound.bind(this);
                 this.onMarkerLost = this.onMarkerLost.bind(this);
 
-                // Escuchar eventos del marcador (this.el es <a-marker>)
+                // Escuchar eventos del marcador
                 this.el.addEventListener('markerFound', this.onMarkerFound);
                 this.el.addEventListener('markerLost', this.onMarkerLost);
             },
 
-            remove: function () {
-                // Limpiar listeners si el componente se destruye
-                this.el.removeEventListener('markerFound', this.onMarkerFound);
-                this.el.removeEventListener('markerLost', this.onMarkerLost);
-            },
-
-            /**
-             * Se dispara cuando el marcador es detectado.
-             */
             onMarkerFound: function () {
-                console.log("Marcador encontrado");
-                // Solo reproducir si NO ha sonado ya en este ciclo de detección
-                // y si la entidad de sonido existe.
-                if (!this.hasPlayed && this.soundEl) {
+                console.log("Marcador Encontrado");
+                // Si el sonido existe y no ha sonado en esta sesión de visibilidad
+                if (this.soundEntity && !this.hasPlayedThisSession) {
                     try {
-                        // Intentar reproducir el sonido
-                        this.soundEl.components.sound.playSound();
-                        
-                        // Marcar como reproducido
-                        this.hasPlayed = true; 
-                        console.log("Reproduciendo sonido (una vez)");
+                        // Reproduce el sonido
+                        this.soundEntity.components.sound.playSound();
+                        this.hasPlayedThisSession = true; // Marca como reproducido
                     } catch (e) {
                         console.error("Error al reproducir sonido:", e);
                     }
                 }
             },
 
-            /**
-             * Se dispara cuando el marcador se pierde.
-             */
             onMarkerLost: function () {
-                console.log("Marcador perdido");
-                if (this.soundEl) {
-                    try {
-                        // Pausar el sonido
-                        this.soundEl.components.sound.pauseSound();
-                        console.log("Sonido pausado");
-                    } catch (e) {
-                        console.error("Error al pausar sonido:", e);
-                    }
+                console.log("Marcador Perdido");
+                if (this.soundEntity) {
+                    // Pausa el sonido si se está reproduciendo
+                    this.soundEntity.components.sound.pauseSound();
                 }
-                
-                // Restablecer la bandera.
-                // Esto permite que el sonido vuelva a sonar la PRÓXIMA vez
-                // que el marcador sea encontrado.
-                this.hasPlayed = false;
+                // Resetea el flag para que pueda volver a sonar la próxima vez que se detecte
+                this.hasPlayedThisSession = false; 
+            },
+
+            remove: function () {
+                // Limpieza de event listeners
+                this.el.removeEventListener('markerFound', this.onMarkerFound);
+                this.el.removeEventListener('markerLost', this.onMarkerLost);
             }
         });
+    </script>
+</head>
 
+<body>
 
-        /**
-         * Script para la UI
-         * * Maneja el desbloqueo de audio y los botones de utilidad.
-         */
-        window.addEventListener('load', () => {
-            const uiContainer = document.getElementById('ui-container');
-            const activateButton = document.getElementById('activate-sound-button');
-            const copyUrlButton = document.getElementById('copy-url-button');
-            const showMarkerButton = document.getElementById('show-marker-button');
+    <div id="instructions-container">
+        Apunta al marcador para ver el modelo.
+        <span id="instructions-activate" style="display: block; font-weight: bold; margin-top: 5px;">
+            Pulsa 'Activar sonido' para habilitar el audio.
+        </span>
+    </div>
 
-            // --- 1. Desbloqueo de Audio ---
-            activateButton.addEventListener('click', () => {
-                const sound = document.querySelector('#sfx-terror');
+    <div id="ui-container">
+        <button id="activate-sound-btn" class="ui-button">Activar sonido</button>
+        
+        <button id="mute-btn" class="ui-button">Silenciar</button>
+        
+        <button id="copy-url-btn" class="ui-button">Copiar URL</button>
+        
+        <button id="show-marker-btn" class="ui-button" 
+                onclick="window.open('./markers/marker-image-example.png', '_blank')">
+            Ver Marcador
+        </button>
+    </div>
+
+    <a-scene 
+        embedded 
+        renderer="antialias: true; physicallyCorrectLights: true; webgl2: true" 
+        arjs="sourceType: webcam; debugUIEnabled: false" 
+        gesture-detector>
+
+        <a-assets>
+            <a-asset-item 
+                id="terror-model" 
+                src="scary.glb">
+            </a-asset-item>
+
+            <audio 
+                id="sfx-terror" 
+                src="audio.mp3" 
+                preload="auto">
+            </audio>
+        </a-assets>
+
+        <a-entity 
+            id="sfxPlayer" 
+            sound="src: #sfx-terror; autoplay: false; loop: false; volume: 1.0; positional: false">
+        </a-entity>
+
+        <a-marker 
+            id="marker-custom" 
+            type="pattern" 
+            url="qrcode.patt" 
+            marker-audio-handler="sfx: #sfxPlayer">
+
+            <a-gltf-model 
+                src="#terror-model"
+                position="0 0.5 0"
+                rotation="-90 0 0"
+                scale="0.5 0.5 0.5"
+                animation-mixer="clip: *; loop: repeat"
+                gesture-handler>
+            </a-gltf-model>
+
+            <a-light type="ambient" color="#888"></a-light>
+            <a-light type="directional" color="#FFF" intensity="0.8" position="-1 2 1"></a-light>
+
+        </a-marker>
+
+        <a-camera gps-camera rotation-reader></a-camera>
+
+    </a-scene>
+
+    <script>
+        // Espera a que el DOM esté cargado
+        window.addEventListener('DOMContentLoaded', () => {
+            // Referencias a elementos
+            const soundEntity = document.querySelector('#sfxPlayer');
+            const soundComponent = soundEntity.components.sound;
+            const activateBtn = document.querySelector('#activate-sound-btn');
+            const muteBtn = document.querySelector('#mute-btn');
+            const copyUrlBtn = document.querySelector('#copy-url-btn');
+            const instructionsActivate = document.querySelector('#instructions-activate');
+
+            // 1. Gesto de usuario para activar audio (OBLIGATORIO)
+            activateBtn.addEventListener('click', () => {
+                console.log("Contexto de audio desbloqueado por el usuario.");
                 
-                if (sound) {
-                    console.log("Intentando desbloquear audio...");
-                    // Truco estándar: 'play' y 'pause' inmediato por gesto del usuario
-                    sound.play().then(() => {
-                        sound.pause();
-                        console.log("Audio desbloqueado por el usuario.");
-                        // Ocultar la UI de bienvenida
-                        uiContainer.classList.add('hidden');
-                    }).catch(error => {
-                        console.error("Error al desbloquear audio:", error);
-                        // Ocultar la UI igualmente para que el usuario pueda ver la cámara
-                        uiContainer.classList.add('hidden');
+                // Intenta reproducir y pausar inmediatamente el sonido.
+                // Este "engaño" desbloquea el contexto de audio en el navegador.
+                if (soundComponent) {
+                    soundComponent.playSound();
+                    soundComponent.pauseSound();
+                }
+
+                // Oculta el botón de activar y muestra el de silenciar
+                activateBtn.style.display = 'none';
+                instructionsActivate.style.display = 'none';
+                muteBtn.style.display = 'inline-block';
+            });
+
+            // 2. Funcionalidad del botón Mute/Unmute
+            muteBtn.addEventListener('click', () => {
+                if (soundComponent) {
+                    // Alterna el volumen entre 0 y 1
+                    const newVolume = soundComponent.volume === 0 ? 1.0 : 0.0;
+                    soundComponent.setVolume(newVolume);
+                    
+                    // Actualiza el texto del botón
+                    muteBtn.textContent = newVolume === 0 ? 'Quitar silencio' : 'Silenciar';
+                }
+            });
+
+            // 3. Funcionalidad del botón Copiar URL
+            copyUrlBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(window.location.href)
+                    .then(() => {
+                        alert('¡URL copiada al portapapeles!');
+                    })
+                    .catch(err => {
+                        console.error('Error al copiar URL: ', err);
+                        alert('No se pudo copiar la URL.');
                     });
-                } else {
-                     ui
+            });
+        });
+
+    </script>
+</body>
+</html>
