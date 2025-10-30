@@ -1,71 +1,269 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebAR Terror - AR.js/A-Frame</title>
+
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-    <script>
-      AFRAME.registerComponent('marker-handler', {
-        init: function () {
-          // Busca el elemento de sonido que está DENTRO del marcador
-          this.soundEl = this.el.querySelector('a-sound');
+    <script src="https://raw.githack.com/fcor/aframe-gesture-detector/master/dist/aframe-gesture-detector.min.js"></script>
 
-          // --- Función para cuando se encuentra el marcador ---
-          this.el.addEventListener('markerFound', () => {
-            console.log("¡Marcador Encontrado!");
-            
-            // Comprobación de seguridad: 
-            // 1. ¿Existe el elemento de sonido?
-            // 2. ¿Tiene su componente 'sound' listo?
-            if (this.soundEl && this.soundEl.components.sound) {
-              this.soundEl.components.sound.playSound(); // Reproduce el sonido
-            }
-          });
-
-          // --- Función para cuando se pierde el marcador ---
-          this.el.addEventListener('markerLost', () => {
-            console.log("Marcador Perdido.");
-            
-            // Misma comprobación de seguridad
-            if (this.soundEl && this.soundEl.components.sound) {
-              this.soundEl.components.sound.stopSound(); // Detiene el sonido
-            }
-          });
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden; /* Evita barras de scroll */
         }
-      });
-    </script>
-  </head>
 
-  <body style="margin : 0px; overflow: hidden;">
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+        /* Contenedor principal de la UI, superpuesto a la escena */
+        #ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5); /* Overlay semitransparente */
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box; /* Para que el padding no afecte el width/height */
+        }
 
-      <a-assets>
-        <a-asset-item id="ghost1-model" src="assets/scary.glb"></a-asset-item>
-        <audio id="sound1" src="assets/audio.mp3" preload="auto"></audio>
+        /* Oculta la UI una vez que se activa el audio */
+        #ui-container.hidden {
+            display: none;
+        }
+
+        #ui-container h2 {
+            margin-top: 0;
+        }
+        
+        #ui-container p {
+            font-size: 1.1em;
+            max-width: 400px;
+        }
+
+        /* Estilo del botón principal */
+        .ui-button {
+            background-color: #4CAF50; /* Verde */
+            color: white;
+            border: none;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .ui-button:hover {
+            background-color: #45a049;
+        }
+        
+        /* Botón secundario/de utilidad */
+        .util-button {
+            background-color: #008CBA; /* Azul */
+        }
+        
+        .util-button:hover {
+            background-color: #007ba7;
+        }
+        
+        /* Contenedor para botones de utilidad en la parte inferior */
+        #util-controls {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11;
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        /* Asegura que la escena ocupe todo */
+        a-scene {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-container">
+        <h2>Experiencia WebAR de Terror</h2>
+        <p>Apunta al marcador para ver el modelo 3D.</p>
+        <p><strong>Pulsa el botón para activar el sonido.</strong></p>
+        <button id="activate-sound-button" class="ui-button">Activar Sonido</button>
+    </div>
+    
+    <div id="util-controls">
+        <button id="copy-url-button" class="ui-button util-button">Copiar URL</button>
+        <button id="show-marker-button" class="ui-button util-button">Ver Marcador</button>
+    </div>
+
+
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="antialias: true; physicallyCorrectLights: true; webgl2: true"
+        gesture-detector
+        vr-mode-ui="enabled: false">
+
+        <a-assets>
+            <a-asset-item id="model-terror" src="scary.glb"></a-asset-item>
+
+            <audio id="sfx-terror" src="audio.mp3" preload="auto" crossOrigin="anonymous"></audio>
         </a-assets>
 
-      <a-marker type="pattern" url="assets/qrcode" marker-handler>
+        <a-entity 
+            id="sfx-player" 
+            sound="src: #sfx-terror; autoplay: false; loop: false; volume: 1.0; positional: false">
+        </a-entity>
+
+        <a-marker 
+            type="pattern" 
+            patternUrl="./qrcode.patt" 
+            id="marker-custom"
+            marker-audio-handler>
+
+            <a-gltf-model
+                src="#model-terror"
+                scale="0.1 0.1 0.1"
+                position="0 0 0"
+                rotation="0 0 0"
+                animation-mixer="clip: *; loop: repeat">
+            </a-gltf-model>
+
+            <a-entity light="type: ambient; color: #555; intensity: 0.8"></a-entity>
+            <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="-1 1 1"></a-entity>
+
+        </a-marker>
+
+        <a-entity camera></a-entity>
         
-        <a-gltf-model 
-            src="#ghost1-model"
-            scale="0.5 0.5 0.5"
-            animation-mixer>
-        </a-gltf-model>
-
-        <a-sound 
-            src="#sound1" 
-            loop="false" 
-            volume="2">
-        </a-sound>
-      </a-marker>
-
-      <a-marker type="pattern" url="assets/pattern-qr2.patt" marker-handler>
-        </a-marker>
-
-      <a-marker type="pattern" url="assets/pattern-qr3.patt" marker-handler>
-        </a-marker>
-
-      <a-entity camera></a-entity>
     </a-scene>
-  </body>
-</html>
+
+    <script>
+        
+        /**
+         * Componente A-Frame: 'marker-audio-handler'
+         * * Propósito: Escuchar eventos 'markerFound' y 'markerLost' para
+         * reproducir un sonido UNA SOLA VEZ por detección y pausarlo
+         * cuando el marcador se pierde.
+         */
+        AFRAME.registerComponent('marker-audio-handler', {
+            
+            init: function () {
+                // Referencia a la entidad que reproduce el sonido
+                this.soundEl = document.querySelector('#sfx-player');
+                
+                // Bandera (flag) para controlar la reproducción única
+                this.hasPlayed = false;
+
+                // Bindear (atar) 'this' a las funciones de evento
+                this.onMarkerFound = this.onMarkerFound.bind(this);
+                this.onMarkerLost = this.onMarkerLost.bind(this);
+
+                // Escuchar eventos del marcador (this.el es <a-marker>)
+                this.el.addEventListener('markerFound', this.onMarkerFound);
+                this.el.addEventListener('markerLost', this.onMarkerLost);
+            },
+
+            remove: function () {
+                // Limpiar listeners si el componente se destruye
+                this.el.removeEventListener('markerFound', this.onMarkerFound);
+                this.el.removeEventListener('markerLost', this.onMarkerLost);
+            },
+
+            /**
+             * Se dispara cuando el marcador es detectado.
+             */
+            onMarkerFound: function () {
+                console.log("Marcador encontrado");
+                // Solo reproducir si NO ha sonado ya en este ciclo de detección
+                // y si la entidad de sonido existe.
+                if (!this.hasPlayed && this.soundEl) {
+                    try {
+                        // Intentar reproducir el sonido
+                        this.soundEl.components.sound.playSound();
+                        
+                        // Marcar como reproducido
+                        this.hasPlayed = true; 
+                        console.log("Reproduciendo sonido (una vez)");
+                    } catch (e) {
+                        console.error("Error al reproducir sonido:", e);
+                    }
+                }
+            },
+
+            /**
+             * Se dispara cuando el marcador se pierde.
+             */
+            onMarkerLost: function () {
+                console.log("Marcador perdido");
+                if (this.soundEl) {
+                    try {
+                        // Pausar el sonido
+                        this.soundEl.components.sound.pauseSound();
+                        console.log("Sonido pausado");
+                    } catch (e) {
+                        console.error("Error al pausar sonido:", e);
+                    }
+                }
+                
+                // Restablecer la bandera.
+                // Esto permite que el sonido vuelva a sonar la PRÓXIMA vez
+                // que el marcador sea encontrado.
+                this.hasPlayed = false;
+            }
+        });
+
+
+        /**
+         * Script para la UI
+         * * Maneja el desbloqueo de audio y los botones de utilidad.
+         */
+        window.addEventListener('load', () => {
+            const uiContainer = document.getElementById('ui-container');
+            const activateButton = document.getElementById('activate-sound-button');
+            const copyUrlButton = document.getElementById('copy-url-button');
+            const showMarkerButton = document.getElementById('show-marker-button');
+
+            // --- 1. Desbloqueo de Audio ---
+            activateButton.addEventListener('click', () => {
+                const sound = document.querySelector('#sfx-terror');
+                
+                if (sound) {
+                    console.log("Intentando desbloquear audio...");
+                    // Truco estándar: 'play' y 'pause' inmediato por gesto del usuario
+                    sound.play().then(() => {
+                        sound.pause();
+                        console.log("Audio desbloqueado por el usuario.");
+                        // Ocultar la UI de bienvenida
+                        uiContainer.classList.add('hidden');
+                    }).catch(error => {
+                        console.error("Error al desbloquear audio:", error);
+                        // Ocultar la UI igualmente para que el usuario pueda ver la cámara
+                        uiContainer.classList.add('hidden');
+                    });
+                } else {
+                     ui
