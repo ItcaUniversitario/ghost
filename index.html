@@ -7,21 +7,28 @@
     <script>
       AFRAME.registerComponent('marker-handler', {
         init: function () {
-          // Se activa cuando el marcador aparece
+          // Busca el elemento de sonido que está DENTRO del marcador
+          this.soundEl = this.el.querySelector('a-sound');
+
+          // --- Función para cuando se encuentra el marcador ---
           this.el.addEventListener('markerFound', () => {
             console.log("¡Marcador Encontrado!");
-            let sound = this.el.querySelector('a-sound'); // Busca el sonido dentro de este marcador
-            if (sound) {
-              sound.components.sound.playSound(); // Reproduce el sonido
+            
+            // Comprobación de seguridad: 
+            // 1. ¿Existe el elemento de sonido?
+            // 2. ¿Tiene su componente 'sound' listo?
+            if (this.soundEl && this.soundEl.components.sound) {
+              this.soundEl.components.sound.playSound(); // Reproduce el sonido
             }
           });
 
-          // Se activa cuando el marcador desaparece
+          // --- Función para cuando se pierde el marcador ---
           this.el.addEventListener('markerLost', () => {
             console.log("Marcador Perdido.");
-            let sound = this.el.querySelector('a-sound');
-            if (sound) {
-              sound.components.sound.stopSound(); // Detiene el sonido
+            
+            // Misma comprobación de seguridad
+            if (this.soundEl && this.soundEl.components.sound) {
+              this.soundEl.components.sound.stopSound(); // Detiene el sonido
             }
           });
         }
@@ -37,7 +44,7 @@
         <audio id="sound1" src="assets/audio.mp3" preload="auto"></audio>
         </a-assets>
 
-      <a-marker type="pattern" url="assets/qrcode.patt" marker-handler>
+      <a-marker type="pattern" url="assets/qrcode" marker-handler>
         
         <a-gltf-model 
             src="#ghost1-model"
